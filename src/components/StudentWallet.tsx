@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wallet, ExternalLink, FileText, Share2, Calendar, Building2, Loader2, History } from 'lucide-react';
+import { Wallet, ExternalLink, FileText, Share2, Calendar, Building2, Loader2, History, Box } from 'lucide-react';
 import { Credential } from '../types/credential';
 import { connectWallet, getStudentCredentials, switchToSepolia } from '../utils/blockchain';
 import { getIPFSUrl } from '../utils/ipfs';
@@ -7,6 +7,7 @@ import { getCredentialsByStudent, CredentialRecord } from '../utils/supabase';
 import QRCodeModal from './QRCodeModal';
 import CredentialSharing from './CredentialSharing';
 import AuditTrail from './AuditTrail';
+import Credential3DShowcase from './Credential3DShowcase';
 
 export default function StudentWallet() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -16,6 +17,7 @@ export default function StudentWallet() {
   const [shareCredential, setShareCredential] = useState<CredentialRecord | null>(null);
   const [viewAuditCredential, setViewAuditCredential] = useState<string | null>(null);
   const [dbCredentials, setDbCredentials] = useState<CredentialRecord[]>([]);
+  const [view3D, setView3D] = useState(false);
 
   useEffect(() => {
     checkWalletConnection();
@@ -105,19 +107,32 @@ export default function StudentWallet() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">My Credentials</h2>
             <p className="text-sm text-gray-600 font-mono">{walletAddress}</p>
           </div>
-          <button
-            onClick={() => loadCredentials(walletAddress)}
-            className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
-          >
-            Refresh
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setView3D(!view3D)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center ${
+                view3D
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Box className="w-4 h-4 mr-2" />
+              {view3D ? '3D View' : 'Switch to 3D'}
+            </button>
+            <button
+              onClick={() => loadCredentials(walletAddress)}
+              className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
@@ -131,6 +146,13 @@ export default function StudentWallet() {
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Credentials Found</h3>
           <p className="text-gray-600">You don't have any academic credentials yet</p>
         </div>
+      ) : view3D ? (
+        <Credential3DShowcase
+          credentials={credentials}
+          dbCredentials={dbCredentials}
+          onShare={(cred) => setShareCredential(cred)}
+          onViewHistory={(id) => setViewAuditCredential(id)}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {credentials.map((credential) => (

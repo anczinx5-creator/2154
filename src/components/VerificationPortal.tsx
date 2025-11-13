@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Search, CheckCircle, XCircle, ExternalLink, Calendar, Building2, User, Loader2 } from 'lucide-react';
+import { Search, CheckCircle, XCircle, ExternalLink, Calendar, Building2, User, Loader2, Lock, CreditCard, Wallet } from 'lucide-react';
 import { Credential } from '../types/credential';
-import { verifyCredential } from '../utils/blockchain';
+import { verifyCredential, connectWallet } from '../utils/blockchain';
 import { getIPFSUrl } from '../utils/ipfs';
+import { checkUserSubscription } from '../utils/subscriptions';
+import PricingModal from './PricingModal';
 
 export default function VerificationPortal() {
   const [tokenId, setTokenId] = useState('');
@@ -10,6 +12,11 @@ export default function VerificationPortal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
+  const [verificationCount, setVerificationCount] = useState(0);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -18,12 +25,54 @@ export default function VerificationPortal() {
       setTokenId(verifyParam);
       handleVerify(verifyParam);
     }
+    checkWalletConnection();
   }, []);
+
+  useEffect(() => {
+    if (walletAddress) {
+      checkAccess();
+    }
+  }, [walletAddress]);
+
+  const checkWalletConnection = async () => {
+    if (window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          setWalletAddress(accounts[0]);
+        }
+      } catch (error) {
+        console.error('Error checking wallet:', error);
+      }
+    }
+  };
+
+  const handleConnectWallet = async () => {
+    const address = await connectWallet();
+    if (address) {
+      setWalletAddress(address);
+    }
+  };
+
+  const checkAccess = async () => {
+    if (!walletAddress) return;
+
+    setCheckingAccess(true);
+    const { hasAccess: access } = await checkUserSubscription(walletAddress, 'employer');
+    setHasAccess(access);
+    setCheckingAccess(false);
+  };
 
   const handleVerify = async (id?: string) => {
     const idToVerify = id || tokenId;
     if (!idToVerify.trim()) {
       setError('Please enter a token ID');
+      return;
+    }
+
+    if (walletAddress && !hasAccess && verificationCount >= 3) {
+      setError('Verification limit reached. Please subscribe to continue.');
+      setShowPricing(true);
       return;
     }
 
@@ -36,6 +85,9 @@ export default function VerificationPortal() {
       const result = await verifyCredential(idToVerify);
       if (result) {
         setCredential(result);
+        if (walletAddress && !hasAccess) {
+          setVerificationCount(prev => prev + 1);
+        }
       } else {
         setError('Credential not found or invalid token ID');
       }
@@ -61,7 +113,50 @@ export default function VerificationPortal() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Verify Academic Credential</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Verify Academic Credential</h2>
+          {!walletAddress ? (
+            <button
+              onClick={handleConnectWallet}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center text-sm"
+            >
+              <Wallet className="w-4 h-4 mr-2" />
+              Connect Wallet
+            </button>
+          ) : !hasAccess && (
+            <div className="text-right">
+              <p className="text-sm text-gray-600">
+                Free verifications: {3 - verificationCount} / 3
+              </p>
+              <button
+                onClick={() => setShowPricing(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Upgrade for unlimited
+              </button>
+            </div>
+          )}
+        </div>
+
+        {walletAddress && !hasAccess && verificationCount >= 3 && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start">
+              <Lock className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-yellow-900">Free limit reached</p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Subscribe to continue verifying credentials. Use code <span className="font-mono font-semibold">TRINETRA</span> for free access.
+                </p>
+                <button
+                  onClick={() => setShowPricing(true)}
+                  className="mt-2 text-sm text-yellow-900 hover:text-yellow-800 font-medium underline"
+                >
+                  View pricing plans
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <input
@@ -219,6 +314,18 @@ export default function VerificationPortal() {
             Enter a credential token ID or scan a QR code to verify its authenticity
           </p>
         </div>
+      )}
+
+      {showPricing && walletAddress && (
+        <PricingModal
+          userType="employer"
+          userAddress={walletAddress}
+          onClose={() => setShowPricing(false)}
+          onSuccess={() => {
+            setShowPricing(false);
+            checkAccess();
+          }}
+        />
       )}
     </div>
   );

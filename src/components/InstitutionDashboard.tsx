@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Upload, CheckCircle, Loader2, TrendingUp, Award, Users, Tabs } from 'lucide-react';
+import { Upload, CheckCircle, Loader2, TrendingUp, Award, Users, Tabs, Lock, CreditCard } from 'lucide-react';
 import { IssuanceFormData } from '../types/credential';
 import { uploadToIPFS } from '../utils/ipfs';
 import { issueCredential, connectWallet, switchToSepolia } from '../utils/blockchain';
 import { saveCredential, getInstitutionStats } from '../utils/supabase';
+import { checkUserSubscription } from '../utils/subscriptions';
 import InstitutionRegistration from './InstitutionRegistration';
 import InstitutionStudents from './InstitutionStudents';
+import PricingModal from './PricingModal';
 
 export default function InstitutionDashboard() {
   const [activeTab, setActiveTab] = useState<'issue' | 'register' | 'students'>('issue');
@@ -23,6 +25,9 @@ export default function InstitutionDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [stats, setStats] = useState({ totalIssued: 0, totalRevoked: 0, recentIssued: 0 });
+  const [hasAccess, setHasAccess] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [showPricing, setShowPricing] = useState(false);
 
   useEffect(() => {
     initWallet();
@@ -31,6 +36,7 @@ export default function InstitutionDashboard() {
   useEffect(() => {
     if (walletAddress) {
       loadStats();
+      checkAccess();
     }
   }, [walletAddress]);
 
@@ -40,6 +46,15 @@ export default function InstitutionDashboard() {
       setWalletAddress(address);
       await switchToSepolia();
     }
+  };
+
+  const checkAccess = async () => {
+    if (!walletAddress) return;
+
+    setCheckingAccess(true);
+    const { hasAccess: access } = await checkUserSubscription(walletAddress, 'institution');
+    setHasAccess(access);
+    setCheckingAccess(false);
   };
 
   const loadStats = async () => {
@@ -111,6 +126,54 @@ export default function InstitutionDashboard() {
       setLoading(false);
     }
   };
+
+  if (checkingAccess) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAccess && walletAddress) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+            <Lock className="w-8 h-8 text-blue-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Subscription Required</h2>
+          <p className="text-gray-600 mb-6">
+            To issue credentials, you need an active subscription plan.
+            Choose a plan that fits your institution needs.
+          </p>
+          <button
+            onClick={() => setShowPricing(true)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center"
+          >
+            <CreditCard className="w-5 h-5 mr-2" />
+            View Pricing Plans
+          </button>
+          <p className="text-sm text-gray-500 mt-4">
+            Use promo code <span className="font-mono font-semibold">TRINETRA</span> for free access
+          </p>
+        </div>
+        {showPricing && walletAddress && (
+          <PricingModal
+            userType="institution"
+            userAddress={walletAddress}
+            onClose={() => setShowPricing(false)}
+            onSuccess={() => {
+              setShowPricing(false);
+              checkAccess();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto">

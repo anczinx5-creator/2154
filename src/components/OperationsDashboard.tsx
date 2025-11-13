@@ -85,16 +85,21 @@ export default function OperationsDashboard({ onBack }: OperationsDashboardProps
 
       const chartPoints = generateChartData(credentials.data || [], auditLogs.data || []);
 
+      const previousData = stats;
+      const credentialsTrend = totalCreds - previousData.totalCredentials;
+      const institutionsTrend = activeInsts - previousData.activeInstitutions;
+      const verificationRateTrend = (totalCreds > 0 ? Math.round((verifications / totalCreds) * 100) : 0) - previousData.verificationRate;
+
       setStats({
         totalCredentials: totalCreds,
         activeInstitutions: activeInsts,
         verificationRate: totalCreds > 0 ? Math.round((verifications / totalCreds) * 100) : 0,
         systemHealth: await getSystemHealth(),
         trends: {
-          credentials: Math.floor(Math.random() * 20) - 5,
-          institutions: Math.floor(Math.random() * 10) - 2,
-          verifications: Math.floor(Math.random() * 15),
-          health: Math.floor(Math.random() * 5) - 2
+          credentials: credentialsTrend,
+          institutions: institutionsTrend,
+          verifications: verificationRateTrend,
+          health: 0
         }
       });
 
@@ -160,9 +165,9 @@ export default function OperationsDashboard({ onBack }: OperationsDashboardProps
 
       points.push({
         date: timeRange === 'year' ? date.toLocaleDateString('en-US', { month: 'short' }) : dateStr.slice(5),
-        issued: issued + Math.floor(Math.random() * 3),
-        verified: verified + Math.floor(Math.random() * 5),
-        shared: shared + Math.floor(Math.random() * 2)
+        issued,
+        verified,
+        shared
       });
     }
 

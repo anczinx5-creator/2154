@@ -57,20 +57,6 @@ export default function SystemHealthMonitor({
     },
   ]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setServices((prev) =>
-        prev.map((service) => ({
-          ...service,
-          responseTime: service.responseTime + Math.floor(Math.random() * 20) - 10,
-          uptime: Math.min(100, service.uptime + Math.random() * 0.1),
-        }))
-      );
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "operational":

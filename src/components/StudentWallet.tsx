@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wallet, ExternalLink, FileText, Share2, Calendar, Building2, Loader2, History, Box } from 'lucide-react';
+import { Wallet, ExternalLink, FileText, Share2, Calendar, Building2, Loader2, History, Box, User } from 'lucide-react';
 import { Credential } from '../types/credential';
 import { connectWallet, getStudentCredentials, switchToSepolia } from '../utils/blockchain';
 import { getIPFSUrl } from '../utils/ipfs';
@@ -8,8 +8,10 @@ import QRCodeModal from './QRCodeModal';
 import CredentialSharing from './CredentialSharing';
 import AuditTrail from './AuditTrail';
 import Credential3DShowcase from './Credential3DShowcase';
+import StudentProfile from './StudentProfile';
 
 export default function StudentWallet() {
+  const [activeTab, setActiveTab] = useState<'credentials' | 'profile'>('credentials');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [loading, setLoading] = useState(false);
@@ -109,34 +111,63 @@ export default function StudentWallet() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">My Credentials</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Student Portal</h2>
             <p className="text-sm text-gray-600 font-mono">{walletAddress}</p>
           </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setView3D(!view3D)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center ${
-                view3D
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <Box className="w-4 h-4 mr-2" />
-              {view3D ? '3D View' : 'Switch to 3D'}
-            </button>
-            <button
-              onClick={() => loadCredentials(walletAddress)}
-              className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
-            >
-              Refresh
-            </button>
-          </div>
+          {activeTab === 'credentials' && (
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setView3D(!view3D)}
+                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center ${
+                  view3D
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Box className="w-4 h-4 mr-2" />
+                {view3D ? '3D View' : 'Switch to 3D'}
+              </button>
+              <button
+                onClick={() => loadCredentials(walletAddress)}
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
+              >
+                Refresh
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('credentials')}
+            className={`px-6 py-3 font-semibold transition-colors ${
+              activeTab === 'credentials'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <FileText className="w-4 h-4 inline mr-2" />
+            My Credentials
+          </button>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`px-6 py-3 font-semibold transition-colors ${
+              activeTab === 'profile'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <User className="w-4 h-4 inline mr-2" />
+            Profile
+          </button>
         </div>
       </div>
 
-      {loading ? (
+      {activeTab === 'profile' ? (
+        <StudentProfile walletAddress={walletAddress} />
+      ) : loading ? (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
         </div>

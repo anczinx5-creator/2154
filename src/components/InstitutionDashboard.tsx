@@ -5,9 +5,10 @@ import { uploadToIPFS } from '../utils/ipfs';
 import { issueCredential, connectWallet, switchToSepolia } from '../utils/blockchain';
 import { saveCredential, getInstitutionStats } from '../utils/supabase';
 import InstitutionRegistration from './InstitutionRegistration';
+import InstitutionStudents from './InstitutionStudents';
 
 export default function InstitutionDashboard() {
-  const [activeTab, setActiveTab] = useState<'issue' | 'register'>('issue');
+  const [activeTab, setActiveTab] = useState<'issue' | 'register' | 'students'>('issue');
   const [formData, setFormData] = useState<IssuanceFormData>({
     studentName: '',
     studentAddress: '',
@@ -161,6 +162,17 @@ export default function InstitutionDashboard() {
           }`}
         >
           Issue Credential
+        </button>
+        <button
+          onClick={() => setActiveTab('students')}
+          className={`px-6 py-3 font-semibold transition-colors flex items-center ${
+            activeTab === 'students'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Users className="w-4 h-4 mr-2" />
+          Registered Students
         </button>
         <button
           onClick={() => setActiveTab('register')}
@@ -326,6 +338,10 @@ export default function InstitutionDashboard() {
           </button>
         </form>
         </div>
+      )}
+
+      {activeTab === 'students' && walletAddress && (
+        <InstitutionStudents institutionAddress={walletAddress} />
       )}
 
       {activeTab === 'register' && (
